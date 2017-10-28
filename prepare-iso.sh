@@ -15,12 +15,23 @@
 #
 function createISO()
 {
+  tmpSuffix=$RANDOM #nicetodo: A filestystem timestamp would be nicer
+
+  #pretty sure these should be the same (they were different, but should be merged)
+  install_build="unpacked_installer.${tmpSuffix}"
+  expanded_orig_installer="unpacked_installer.${tmpSuffix}"
+
+  mountedName="OS X Base System" #this is what the apple decided to call the .dmg'd disk
+
+
   if [ $# -eq 2 ] ; then
     local installerAppName=${1}
-    local isoName=${2}
+    local OsFamiliarName=${2}
+    tmpIsoName="${OsFamiliarName}.${tmpSuffix}"
+
     local error=0
 
-    # echo Debug: installerAppName = ${installerAppName} , isoName = ${isoName}
+    # echo Debug: installerAppName = ${installerAppName} , isoName = ${OsFamiliarName}
 
     # ==============================================================
     # 10.11 & 10.12: How to make an ISO from the Install app
@@ -30,110 +41,130 @@ function createISO()
     echo -----------------------------------------------------------
 
     if [ -e "${installerAppName}" ] ; then
-      echo $ hdiutil attach "${installerAppName}"/Contents/SharedSupport/InstallESD.dmg -noverify -nobrowse -mountpoint /Volumes/install_app
-      hdiutil attach "${installerAppName}"/Contents/SharedSupport/InstallESD.dmg -noverify -nobrowse -mountpoint /Volumes/install_app
-      error=$?
+      echo "------ Installer is in local dir ------"
+      installerAppLongName="${installerAppName}"
     elif [ -e /Applications/"${installerAppName}" ] ; then
-      echo $ hdiutil attach /Applications/"${installerAppName}"/Contents/SharedSupport/InstallESD.dmg -noverify -nobrowse -mountpoint /Volumes/install_app
-      hdiutil attach /Applications/"${installerAppName}"/Contents/SharedSupport/InstallESD.dmg -noverify -nobrowse -mountpoint /Volumes/install_app
-      error=$?
-      installerAppName="/Applications/${installerAppName}"
+      echo "------ Installer is in /Applications dir ------"
+      installerAppLongName="/Applications/${installerAppName}"
     else
       echo Installer Not found!
       error=1
     fi
+    set -x
+    hdiutil attach "${installerAppLongName}"/Contents/SharedSupport/InstallESD.dmg -noverify -nobrowse -mountpoint /Volumes/"${install_build}"
+    error=$?
+    set +x
+
 
     if [ ${error} -ne 0 ] ; then
-      echo "Failed to mount the InstallESD.dmg from the instaler at ${installerAppName}.  Exiting. (${error})"
+      echo "Failed to mount the InstallESD.dmg from the instaler at ${installerAppLongName}.  Exiting. (${error})"
       return ${error}
     fi
 
     echo
-    echo Create ${isoName} blank ISO image with a Single Partition - Apple Partition Map
+    echo "Create ${OsFamiliarName} as a temporary blank ISO image called ${TmpIsoName} with a Single Partition - Apple Partition Map"
     echo --------------------------------------------------------------------------
-    echo $ hdiutil create -o /tmp/${isoName} -size 8g -layout SPUD -fs HFS+J -type SPARSE
-    hdiutil create -o /tmp/${isoName} -size 8g -layout SPUD -fs HFS+J -type SPARSE
+     #quasi random name to help with development so subsequent runs don't step on each other
+    set -x
+    hdiutil create -o /tmp/${tmpIsoName} -size 8g -layout SPUD -fs HFS+J -type SPARSE
+    set +x
 
     echo
     echo Mount the sparse bundle for package addition
     echo --------------------------------------------------------------------------
-    echo $ hdiutil attach /tmp/${isoName}.sparseimage -noverify -nobrowse -mountpoint /Volumes/install_build
-    hdiutil attach /tmp/${isoName}.sparseimage -noverify -nobrowse -mountpoint /Volumes/install_build
+    set -x
+    hdiutil attach /tmp/${tmpIsoName}.sparseimage -noverify -nobrowse -mountpoint /Volumes/"${install_build}"
+    set +x
 
     echo
-    echo Restore the Base System into the ${isoName} ISO image
-    echo --------------------------------------------------------------------------
-    if [ "${isoName}" == "HighSierra" ] ; then
-      echo $ time asr restore -source "${installerAppName}"/Contents/SharedSupport/BaseSystem.dmg -target /Volumes/install_build -noprompt -noverify -erase
-      time asr restore -source "${installerAppName}"/Contents/SharedSupport/BaseSystem.dmg -target /Volumes/install_build -noprompt -noverify -erase
-    else
-      echo $ asr restore -source /Volumes/install_app/BaseSystem.dmg -target /Volumes/install_build -noprompt -noverify -erase
-      asr restore -source /Volumes/install_app/BaseSystem.dmg -target /Volumes/install_build -noprompt -noverify -erase
-    fi
+    echo Restore the Base System into the ${tmpIsoName} ISO image
+    echo ---------------------------- ${OsFamiliarName} ----------------------------------------------
+    #if [ "${OsFamiliarName}" == "HighSierra" ] ; then
+      set -x
+      time asr restore -source "${installerAppLongName}"/Contents/SharedSupport/BaseSystem.dmg -target /Volumes/"${install_build}" -noprompt -noverify -erase
+      set +x
+    #else
+    #  set -x
+    #       asr restore -source /Volumes/"${expanded_orig_installer}"/BaseSystem.dmg -target /Volumes/"${install_build}" -noprompt -noverify -erase
+    #  set +x
+    #fi
+
+
 
     echo
     echo Remove Package link and replace with actual files
-    echo --------------------------------------------------------------------------
-    if [ "${isoName}" == "HighSierra" ] ; then
-      echo $ time ditto -V /Volumes/install_app/Packages /Volumes/OS\ X\ Base\ System/System/Installation/
-      time ditto -V /Volumes/install_app/Packages /Volumes/OS\ X\ Base\ System/System/Installation/
-    else
-      echo $ rm /Volumes/OS\ X\ Base\ System/System/Installation/Packages
-      rm /Volumes/OS\ X\ Base\ System/System/Installation/Packages
-      echo $ cp -rp /Volumes/install_app/Packages /Volumes/OS\ X\ Base\ System/System/Installation/
-      cp -rp /Volumes/install_app/Packages /Volumes/OS\ X\ Base\ System/System/Installation/
-    fi
+    echo ----------------------------- ${OsFamiliarName} ---------------------------------------------
+    #if [ "${OsFamiliarName}" == "HighSierra" ] ; then
+      set -x
+      #rm "/Volumes/${mountedName}/System/Installation/Packages " #<-- Look, yes this trailing space is real (FYI, this step might probably not be necessary)
+      time ditto -V /Volumes/"${expanded_orig_installer}"/Packages "/Volumes/${mountedName}/System/Installation/"
+      set +x
+    #else
+    #  set -x
+    #  rm "/Volumes/${mountedName}/System/Installation/Packages"
+    #  cp -rp /Volumes/"${expanded_orig_installer}"/Packages "/Volumes/${mountedName}/System/Installation/"
+    #  set +x
+    #fi
+
 
     echo
-    echo Copy macOS ${isoName} installer dependencies
-    echo --------------------------------------------------------------------------
-    if [ "${isoName}" == "HighSierra" ] ; then
-      echo $ ditto -V "${installerAppName}"/Contents/SharedSupport/BaseSystem.chunklist /Volumes/OS\ X\ Base\ System/BaseSystem.chunklist
-      ditto -V "${installerAppName}"/Contents/SharedSupport/BaseSystem.chunklist /Volumes/OS\ X\ Base\ System/BaseSystem.chunklist
-      echo $ time ditto -V "${installerAppName}"/Contents/SharedSupport/BaseSystem.dmg /Volumes/OS\ X\ Base\ System/BaseSystem.dmg
-      time ditto -V "${installerAppName}"/Contents/SharedSupport/BaseSystem.dmg /Volumes/OS\ X\ Base\ System/BaseSystem.dmg
-    else
-      echo $ cp -rp /Volumes/install_app/BaseSystem.chunklist /Volumes/OS\ X\ Base\ System/BaseSystem.chunklist
-      cp -rp /Volumes/install_app/BaseSystem.chunklist /Volumes/OS\ X\ Base\ System/BaseSystem.chunklist
-      echo $ cp -rp /Volumes/install_app/BaseSystem.dmg /Volumes/OS\ X\ Base\ System/BaseSystem.dmg
-      cp -rp /Volumes/install_app/BaseSystem.dmg /Volumes/OS\ X\ Base\ System/BaseSystem.dmg
-    fi
+    echo Copy macOS ${OsFamiliarName} installer dependencies
+    echo -------------------------------- ${OsFamiliarName} ------------------------------------------
+    #if [ "${OsFamiliarName}" == "HighSierra" ] ; then
+      set -x
+      ditto -V "${installerAppLongName}"/Contents/SharedSupport/BaseSystem.chunklist "/Volumes/${mountedName}/BaseSystem.chunklist"
+      time ditto -V "${installerAppLongName}"/Contents/SharedSupport/BaseSystem.dmg "/Volumes/${mountedName}/BaseSystem.dmg"
+      set +x
+    #else
+    #  set -x
+    #  cp -rp /Volumes/"${expanded_orig_installer}"/BaseSystem.chunklist "/Volumes/${mountedName}/BaseSystem.chunklist"
+    #  cp -rp /Volumes/"${expanded_orig_installer}"/BaseSystem.dmg "/Volumes/${mountedName}/BaseSystem.dmg"
+    #  set +x
+    #fi
+
+
 
     echo
     echo Unmount the installer image
     echo --------------------------------------------------------------------------
-    echo $ hdiutil detach /Volumes/install_app
-    hdiutil detach /Volumes/install_app
+    set -x
+    hdiutil detach /Volumes/"${expanded_orig_installer}"
+    set +x
 
     echo
     echo Unmount the sparse bundle
     echo --------------------------------------------------------------------------
-    echo $ hdiutil detach /Volumes/OS\ X\ Base\ System/
-    hdiutil detach /Volumes/OS\ X\ Base\ System/
+    set -x
+    hdiutil detach "/Volumes/${mountedName}/"
+    set +x
 
     echo
     echo Resize the partition in the sparse bundle to remove any free space
     echo --------------------------------------------------------------------------
-    echo $ hdiutil resize -size `hdiutil resize -limits /tmp/${isoName}.sparseimage | tail -n 1 | awk '{ print $1 }'`b /tmp/${isoName}.sparseimage
-    hdiutil resize -size `hdiutil resize -limits /tmp/${isoName}.sparseimage | tail -n 1 | awk '{ print $1 }'`b /tmp/${isoName}.sparseimage
+    set -x
+    hdiutil resize -size `hdiutil resize -limits /tmp/${tmpIsoName}.sparseimage | tail -n 1 | awk '{ print $1 }'`b /tmp/${tmpIsoName}.sparseimage
+    set +x
 
     echo
-    echo Convert ${isoName} the sparse bundle to ISO/CD master
+    echo Convert ${OsFamiliarName} the sparse bundle to ISO/CD master
     echo --------------------------------------------------------------------------
-    echo $ time hdiutil convert /tmp/${isoName}.sparseimage -format UDTO -o /tmp/${isoName}
-    time hdiutil convert /tmp/${isoName}.sparseimage -format UDTO -o /tmp/${isoName}
+    set -x
+    time hdiutil convert /tmp/${tmpIsoName}.sparseimage -format UDTO -o /tmp/${OsFamiliarName}
+    set +x
 
     echo
     echo Remove the sparse bundle
     echo --------------------------------------------------------------------------
-    echo $ rm /tmp/${isoName}.sparseimage
-    rm /tmp/${isoName}.sparseimage
+    set -x
+    rm /tmp/${tmpIsoName}.sparseimage
+    set +x
 
     echo
     echo Rename the ISO and move it to the desktop
     echo --------------------------------------------------------------------------
-    echo $ mv /tmp/${isoName}.cdr ~/Desktop/${isoName}.iso
-    mv /tmp/${isoName}.cdr ~/Desktop/${isoName}.iso
+    set -x
+    mv /tmp/${OsFamiliarName}.cdr ~/Downloads/${OsFamiliarName}.iso
+    set +x
   fi
 }
 
@@ -167,24 +198,24 @@ installerExists "Install macOS High Sierra.app"
 result=$?
 if [ ${result} -eq 0 ] ; then
   createISO "Install macOS High Sierra.app" "HighSierra"
+#else
+#  installerExists "Install macOS Sierra.app"
+#  result=$?
+#  if [ ${result} -eq 0 ] ; then
+#    createISO "Install macOS Sierra.app" "Sierra"
+#  else
+#    installerExists "Install OS X El Capitan.app"
+#    result=$?
+#    if [ ${result} -eq 0 ] ; then
+#      createISO "Install OS X El Capitan.app" "ElCapitan"
+#    else
+#      installerExists "Install OS X Yosemite.app"
+#      result=$?
+#      if [ ${result} -eq 0 ] ; then
+#        createISO "Install OS X Yosemite.app" "Yosemite"
 else
-  installerExists "Install macOS Sierra.app"
-  result=$?
-  if [ ${result} -eq 0 ] ; then
-    createISO "Install macOS Sierra.app" "Sierra"
-  else
-    installerExists "Install OS X El Capitan.app"
-    result=$?
-    if [ ${result} -eq 0 ] ; then
-      createISO "Install OS X El Capitan.app" "ElCapitan"
-    else
-      installerExists "Install OS X Yosemite.app"
-      result=$?
-      if [ ${result} -eq 0 ] ; then
-        createISO "Install OS X Yosemite.app" "Yosemite"
-      else
-        echo "Could not find installer for Yosemite (10.10), El Capitan (10.11), Sierra (10.12) or High Sierra (10.13)."
-      fi
-    fi
-  fi
+    echo "Could not find installer.  I looked in Applications and in the local dir."
+#      fi
+#    fi
+#  fi
 fi
