@@ -1,11 +1,21 @@
 # macOS VirtualBox VM Instructions
 
-Current macOS version: *High Sierra (10.13)*, tested with VirtualBox *5.1.28 r117968*
+This project lets you create a VM on your Mac that will, in-turn, then install a new version of a Mac High Sierra into that 
+virtual machine.  You would do this if you wanted to work with a clean copy of a Mac, mainly useful for 
+developers and system administrators.
 
-Note: this is a forked version of the project that only supports HighSierra
+This works for installing macOS version: *High Sierra (10.13)*, tested with VirtualBox *5.1.28 r117968*
+
+Important Caveat: Starting in Mac High Sierra, the Mac App Store won't let you re-download OS installer if you are
+at that level of OS.  So, you'll need to go to a Mac with an old OS on it and download the installer for the newer
+OS and store it somewhere accessible, like a flash drive.
+
+Note: this is a forked version of the project and this version only supports HighSierra.  This was done for simplicity
+and readability.
+
 To build a VM running macOS, follow the directions below:
 
-  1. Download the installer from Mac App Store (it should be available in the 'Purchases' section if you've acquired it previously). The installer will be placed in your Applications folder. (Should work for High Sierra - 10.13.).          
+  1. Download the High Sierra (https://itunes.apple.com/us/app/macos-high-sierra/id1246284741 )installer from Mac App Store (it should be available in the 'Purchases' section if you've upgraded to it previously on your Mac). The installer will be placed in your Applications folder. (Should work for High Sierra - 10.13.).          
          The Installer will download to your Application folder, which is fine.  You can also move a copy to your current working directory.          
          
   2. Make the script executable and run it: 
