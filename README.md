@@ -45,7 +45,7 @@ from the mac
   12. When the install process complete, the machine will guest reboot, probably back onto your .iso.  To avoid this, ...        
         1. power off the virtual machine.
         2. Open Virtual Box
-        3. Go to setting (for you new Mac)-> Storage-->HighSierra.iso-->Right Client-->Remove
+        3. Go to setting (for you new Mac)-> Storage-->HighSierra.iso-->Right Click-->Remove
         4. Start the new guest Mac
   13. If for High Sierra you encounter boot / EFI problems (likley), get yourself to the EFI Shell (Not the Mac Terminal) restart the VM and hit `F12` to get to the VirtualBox boot manager.  Select **EFI In-Terminal Shell** and run:
 ```bash
