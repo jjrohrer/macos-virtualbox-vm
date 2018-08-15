@@ -66,6 +66,14 @@ FS1:\macOS Install Data\Locked Files\> cd "Boot Files"
 FS1:\macOS Install Data\Locked Files\Boot Files\> boot.efi
 ```    
   15. Tip: After initial installation, be sure to take a snapshot in VirtualBox so that you don't need to reinstall again, unless you found this really fun.
+  16. ProTip: To avoid going crazy, set the Guest-Capture key to something other than Command, 
+	like 'Right-Alt'.  
+	
+	`VirtualBox-->Prefences-->Input-->Host Key Combination`	
+  17. ProTip: To avoid the mouse scrolling backwards, in your guest machine, 
+  turn off mouse "Natural" scrolling in `System Preferences-->Mouse`.  This is 
+  only an issue because your host OS is already inverting the mouse once, and 
+  once is enough.
 
 
 ## Troubleshooting & Improvements
